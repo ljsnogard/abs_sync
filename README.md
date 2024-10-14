@@ -1,10 +1,17 @@
 # abs_sync
 
-Abstraction of synchronization for Rust async/await.
+Abstraction of synchronization for Rust async/await.  
+This crate provide traits about locks in sync and/or async environment.  
 
-This crate provide traits about locks in sync and/or async environment.
+## Required unstable features:
 
-# Example
+```
+#![feature(sync_unsafe_cell)]
+#![feature(try_trait_v2)]
+#![feature(type_alias_impl_trait)]
+```
+
+## Example
 
 ```rust
 use core::{

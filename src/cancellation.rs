@@ -1,6 +1,7 @@
 ﻿use core::{
     cell::SyncUnsafeCell,
     future::{self, Future, IntoFuture},
+    marker::PhantomPinned,
     pin::Pin,
 };
 
@@ -27,17 +28,18 @@ where
 }
 
 #[derive(Debug, Default, Clone, Copy)]
-pub struct CancelledToken;
+pub struct CancelledToken(PhantomPinned);
 
 impl CancelledToken {
     pub const fn new() -> Self {
-        CancelledToken
+        CancelledToken(PhantomPinned)
     }
 
     pub fn pinned() -> Pin<&'static mut Self> {
         static mut SHARED: SyncUnsafeCell<CancelledToken> =
             SyncUnsafeCell::new(CancelledToken::new());
         unsafe {
+            #[allow(static_mut_refs)]
             Pin::new_unchecked(SHARED.get_mut())
         }
     }
@@ -64,17 +66,18 @@ impl TrCancellationToken for CancelledToken {
 /// A cancellation token that will never be cancelled, usually used
 /// as a dummy for `TrCancellationToken`.
 #[derive(Debug, Default, Clone, Copy)]
-pub struct NonCancellableToken;
+pub struct NonCancellableToken(PhantomPinned);
 
 impl NonCancellableToken {
     pub const fn new() -> Self {
-        NonCancellableToken
+        NonCancellableToken(PhantomPinned)
     }
 
     pub fn pinned() -> Pin<&'static mut Self> {
         static mut SHARED: SyncUnsafeCell<NonCancellableToken> =
             SyncUnsafeCell::new(NonCancellableToken::new());
         unsafe {
+            #[allow(static_mut_refs)]
             Pin::new_unchecked(SHARED.get_mut())
         }
     }

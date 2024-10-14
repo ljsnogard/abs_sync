@@ -22,6 +22,5 @@ pub mod preludes {
 }
 
 pub mod x_deps {
-    pub use atomex;
     pub use pin_utils;
 }
