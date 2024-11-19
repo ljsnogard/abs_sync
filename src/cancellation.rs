@@ -6,11 +6,23 @@
 };
 
 pub trait TrCancellationToken: Clone {
+    type Cancellation<'a>: 'a + IntoFuture<Output = ()> where Self: 'a;
+
     fn is_cancelled(&self) -> bool;
 
     fn can_be_cancelled(&self) -> bool;
 
-    fn cancellation(self: Pin<&mut Self>) -> impl IntoFuture<Output = ()>;
+    fn cancellation(self: Pin<&mut Self>) -> Self::Cancellation<'_>;
+}
+
+pub trait TrConfigCancelSignal: IntoFuture<Output = ()> {
+    /// Configure the future of cancellation signal should turn ready when the 
+    /// cancellation token is orphaned.
+    fn cancel_on_orphaned(self) -> impl IntoFuture<Output = ()>;
+
+    /// Configure the future of cancellation signal should stay pending even 
+    /// though the cancellation token is orphaned.
+    fn pend_on_orphaned(self) -> impl IntoFuture<Output = ()>;
 }
 
 pub trait TrIntoFutureMayCancel<'a>
@@ -50,6 +62,8 @@ impl CancelledToken {
 }
 
 impl TrCancellationToken for CancelledToken {
+    type Cancellation<'a> = future::Ready<()> where Self: 'a;
+
     fn is_cancelled(&self) -> bool {
         true
     }
@@ -58,7 +72,7 @@ impl TrCancellationToken for CancelledToken {
         false
     }
 
-    fn cancellation(self: Pin<&mut Self>) -> impl IntoFuture<Output = ()> {
+    fn cancellation(self: Pin<&mut Self>) -> Self::Cancellation<'_> {
         CancelledToken::cancellation(self)
     }
 }
@@ -88,6 +102,8 @@ impl NonCancellableToken {
 }
 
 impl TrCancellationToken for NonCancellableToken {
+    type Cancellation<'a> = future::Pending<()> where Self: 'a;
+
     fn is_cancelled(&self) -> bool {
         false
     }
@@ -96,7 +112,7 @@ impl TrCancellationToken for NonCancellableToken {
         false
     }
 
-    fn cancellation(self: Pin<&mut Self>) -> impl IntoFuture<Output = ()> {
+    fn cancellation(self: Pin<&mut Self>) -> Self::Cancellation<'_> {
         NonCancellableToken::cancellation(self)
     }
 }
