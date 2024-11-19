@@ -41,19 +41,19 @@ where
 
     fn read<'g>(
         self: Pin<&'g mut Self>,
-    ) -> impl TrSyncTask<Output = Self::ReaderGuard<'g>>
+    ) -> impl TrSyncTask<MayCancelOutput = Self::ReaderGuard<'g>>
     where
         'a: 'g;
 
     fn write<'g>(
         self: Pin<&'g mut Self>,
-    ) -> impl TrSyncTask<Output = Self::WriterGuard<'g>>
+    ) -> impl TrSyncTask<MayCancelOutput = Self::WriterGuard<'g>>
     where
         'a: 'g;
 
     fn upgradable_read<'g>(
         self: Pin<&'g mut Self>,
-    ) -> impl TrSyncTask<Output = Self::UpgradableGuard<'g>>
+    ) -> impl TrSyncTask<MayCancelOutput = Self::UpgradableGuard<'g>>
     where
         'a: 'g;
 }
@@ -121,7 +121,7 @@ where
 
     fn upgrade<'u>(
         self: Pin<&'u mut Self>,
-    ) -> impl TrSyncTask<Output =
+    ) -> impl TrSyncTask<MayCancelOutput =
             <Self::Acquire as TrAcquire<'a, T>>::WriterGuard<'u>>
     where
         'g: 'u;
@@ -129,24 +129,4 @@ where
     fn into_guard(
         self,
     ) -> <Self::Acquire as TrAcquire<'a, T>>::UpgradableGuard<'g>;
-}
-
-pub trait TrSyncMutex {
-    type Target: ?Sized;
-
-    type MutexGuard<'a>: TrMutexGuard<'a, Self::Target> where Self: 'a;
-
-    fn is_acquired(&self) -> bool;
-
-    fn try_acquire(&self) -> Option<Self::MutexGuard<'_>>;
-
-    fn acquire(&self) -> impl TrSyncTask<Output = Self::MutexGuard<'_>>;
-}
-
-pub trait TrMutexGuard<'a, T>
-where
-    Self: Sized + DerefMut<Target = T>,
-    T: 'a + ?Sized,
-{
-    type Mutex: 'a + ?Sized + TrSyncMutex<Target = T>;
 }

@@ -3,7 +3,6 @@
     pin::Pin,
     task::{Context, Poll},
 };
-use pin_project::pin_project;
 
 pub trait XtOkOr<E>
 where
@@ -13,15 +12,14 @@ where
     fn ok_or(self, other: E) -> OkOr<Self, E>;
 }
 
-#[pin_project]
 #[derive(Debug)]
 pub struct OkOr<F, G>
 where
     F: Future,
     G: Future,
 {
-    #[pin]ok_: F,
-    #[pin]or_: G,
+    ok_: F,
+    or_: G,
 }
 
 impl<F, G> OkOr<F, G>
@@ -44,24 +42,26 @@ where
 {
     type Output = Result<F::Output, G::Output>;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
-        if let Poll::Ready(x) = this.ok_.poll(cx) {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this_mut = unsafe { self.as_mut().get_unchecked_mut() };
+        let ok = unsafe { Pin::new_unchecked(&mut this_mut.ok_) };
+        let err = unsafe { Pin::new_unchecked(&mut this_mut.or_) };
+        if let Poll::Ready(x) = ok.poll(cx) {
             return Poll::Ready(Result::Ok(x));
         }
-        if let Poll::Ready(e) = this.or_.poll(cx) {
+        if let Poll::Ready(e) = err.poll(cx) {
             return Poll::Ready(Result::Err(e));
         }
         Poll::Pending
     }
 }
 
-impl<F, E> XtOkOr<E> for F
+impl<F, G> XtOkOr<G> for F
 where
     F: Future,
-    E: Future,
+    G: Future,
 {
-    fn ok_or(self, other: E) -> OkOr<Self, E> {
+    fn ok_or(self, other: G) -> OkOr<Self, G> {
         OkOr::new(self, other)
     }
 }
