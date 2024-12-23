@@ -130,23 +130,3 @@ where
         self,
     ) -> <Self::Acquire as TrAcquire<'a, T>>::UpgradableGuard<'g>;
 }
-
-pub trait TrSyncMutex {
-    type Target: ?Sized;
-
-    type MutexGuard<'a>: TrMutexGuard<'a, Self::Target> where Self: 'a;
-
-    fn is_acquired(&self) -> bool;
-
-    fn try_acquire(&self) -> Option<Self::MutexGuard<'_>>;
-
-    fn acquire(&self) -> impl TrSyncTask<Output = Self::MutexGuard<'_>>;
-}
-
-pub trait TrMutexGuard<'a, T>
-where
-    Self: Sized + DerefMut<Target = T>,
-    T: 'a + ?Sized,
-{
-    type Mutex: 'a + ?Sized + TrSyncMutex<Target = T>;
-}

@@ -69,3 +69,45 @@ where
     drop(upgradable)
 }
 ```
+
+## Why?
+
+With considered API design comes with `abs_sync`, a better pattern that reduces deadlock can apply to daily lock acquiring situations.  
+
+You may want to read [Rust's Sneaky Deadlock With `if let` Blocks](https://brooksblog.bearblog.dev/rusts-sneaky-deadlock-with-if-let-blocks/).
+
+With `abs_sync`, the contenders are forced to acquire the lock with their own `Acquire` instances.  
+That means, compiler can stop you from dead-lock:
+
+```rust
+
+async fn prevent_dead_lock_demo<B, L, T>(
+    rwlock: &'static impl TrAsyncRwLock<Target = T>,
+) {
+    let acq = rwlock.acquire();
+    pin_mut!(acq);
+
+    // acq first mutable borrow occurs here
+    let branch_read = acq
+        .as_mut()
+        .read_async()
+        .may_cancel_with(NonCancellableToken::pinned())
+        .await
+        .branch();
+    if let ControlFlow::Continue(_read) = branch_read {
+
+    } else {
+        // cannot borrow `acq` as mutable more than once at a time
+        let branch_write = acq
+            .as_mut()
+            .write_async()
+            .may_cancel_with(NonCancellableToken::pinned())
+            .await
+            .branch();
+        let ControlFlow::Continue(_write) = branch_write else {
+            unreachable!()
+        };
+    }
+}
+
+```
