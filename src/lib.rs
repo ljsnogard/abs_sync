@@ -1,4 +1,11 @@
 ﻿#![no_std]
+
+// to enable no hand-written poll
+#![feature(async_closure)]
+#![feature(async_fn_traits)]
+#![feature(impl_trait_in_assoc_type)]
+#![feature(unboxed_closures)]
+
 #![feature(sync_unsafe_cell)]
 #![feature(try_trait_v2)]
 #![feature(type_alias_impl_trait)]
@@ -23,8 +30,4 @@ pub mod preludes {
     pub use super::sync_lock::TrSyncRwLock;
     pub use super::sync_mutex::TrSyncMutex;
     pub use super::sync_tasks::TrSyncTask;
-}
-
-pub mod x_deps {
-    pub use pin_utils;
 }

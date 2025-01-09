@@ -131,12 +131,9 @@ mod demo_ {
         borrow::BorrowMut,
         ops::{ControlFlow, Deref, DerefMut},
     };
-
     use pin_utils::pin_mut;
-    use crate::{
-        cancellation::{NonCancellableToken, TrIntoFutureMayCancel},
-        x_deps::pin_utils,
-    };
+
+    use crate::cancellation::{NonCancellableToken, TrIntoFutureMayCancel};
 
     use super::*;
 

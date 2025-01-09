@@ -11,12 +11,9 @@ categories = ["no-std"]
 license = "MIT/Apache-2.0"
 readme = "README.md"
 
-[dependencies]
-pin-project = { version = "1.1.*" }
-pin-utils = { version = "0.1" }
-
 [dev-dependencies]
 futures-lite = { version = "2" }
+pin-utils = { version = "*" }
 tokio = { version = "1", features = ["full"] }
 log = { version = "0.4.*" }
 env_logger = { version = "0.11.*" }

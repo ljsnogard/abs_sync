@@ -1,13 +1,10 @@
 ﻿use core::{
-    future::Future,
+    future::{Future, IntoFuture},
     marker::PhantomData,
     mem::MaybeUninit,
-    ops::{ControlFlow, Try},
-    pin::Pin,
-    task::{Context, Poll},
+    ops::{AsyncFnOnce, Try},
 };
 
-use pin_utils::pin_mut;
 use crate::cancellation::{NonCancellableToken, TrIntoFutureMayCancel};
 
 /// An convenient future to implement `IntoFuture` for `TrIntoFutureMayCancel`
@@ -32,28 +29,36 @@ where
         }
     }
 
-    async fn run_without_cancel(
-        self: Pin<&mut Self>,
-    ) -> <T::MayCancelOutput as Try>::Output {
+    async fn run_without_cancel(self) -> T::MayCancelOutput {
         let task = unsafe { self.task_.assume_init_read() };
         let cancel = NonCancellableToken::pinned();
-        let r = task.may_cancel_with(cancel).await;
-        match Try::branch(r) {
-            ControlFlow::Continue(x) => x,
-            _ => unreachable!("[FutureForTaskNeverCancel::run_without_cancel]"),
-        }
+        task.may_cancel_with(cancel).await
     }
 }
 
-impl<'a, T> Future for FutureForTaskNeverCancel<'a, T>
+impl<'a, T> AsyncFnOnce<()> for FutureForTaskNeverCancel<'a, T>
 where
     T: TrIntoFutureMayCancel<'a, MayCancelOutput: Try>,
 {
-    type Output = <T::MayCancelOutput as Try>::Output;
+    type CallOnceFuture = impl Future<Output = Self::Output>;
+    type Output = T::MayCancelOutput;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let f = self.run_without_cancel();
-        pin_mut!(f);
-        f.poll(cx)
+    extern "rust-call" fn async_call_once(
+        self,
+        _: (),
+    ) -> Self::CallOnceFuture {
+        self.run_without_cancel()
+    }
+}
+
+impl<'a, T> IntoFuture for FutureForTaskNeverCancel<'a, T>
+where
+    T: TrIntoFutureMayCancel<'a, MayCancelOutput: Try>,
+{
+    type IntoFuture = <Self as AsyncFnOnce<()>>::CallOnceFuture;
+    type Output = <Self::IntoFuture as Future>::Output;
+
+    fn into_future(self) -> Self::IntoFuture {
+        self()
     }
 }
