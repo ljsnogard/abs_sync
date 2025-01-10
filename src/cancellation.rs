@@ -25,18 +25,18 @@ pub trait TrConfigCancelSignal: IntoFuture<Output = ()> {
     fn pend_on_orphaned(self) -> impl IntoFuture<Output = ()>;
 }
 
-pub trait TrIntoFutureMayCancel<'a>
+pub trait TrIntoFutureMayCancel
 where
-    Self: 'a + Sized,
+    Self: Sized,
 {
     type MayCancelOutput;
 
-    fn may_cancel_with<C>(
+    fn may_cancel_with<'f, C: TrCancellationToken>(
         self,
-        cancel: Pin<&'a mut C>,
+        cancel: Pin<&'f mut C>,
     ) -> impl Future<Output = Self::MayCancelOutput>
     where
-        C: TrCancellationToken;
+        Self: 'f;
 }
 
 #[derive(Debug, Default, Clone, Copy)]

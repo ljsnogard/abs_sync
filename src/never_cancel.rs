@@ -1,6 +1,5 @@
 ﻿use core::{
     future::{Future, IntoFuture},
-    marker::PhantomData,
     mem::MaybeUninit,
     ops::{AsyncFnOnce, Try},
 };
@@ -10,22 +9,20 @@ use crate::cancellation::{NonCancellableToken, TrIntoFutureMayCancel};
 /// An convenient future to implement `IntoFuture` for `TrIntoFutureMayCancel`
 /// that will not actually being cancelled, and that the output will differs
 /// (but deducible) from the cancellable version.
-pub struct FutureForTaskNeverCancel<'a, T>
+pub struct FutureForTaskNeverCancel<T>
 where
-    T: TrIntoFutureMayCancel<'a, MayCancelOutput: Try>,
+    T: TrIntoFutureMayCancel<MayCancelOutput: Try>,
 {
     task_: MaybeUninit<T>,
-    _use_: PhantomData<&'a mut T>,
 }
 
-impl<'a, T> FutureForTaskNeverCancel<'a, T>
+impl<T> FutureForTaskNeverCancel<T>
 where
-    T: TrIntoFutureMayCancel<'a, MayCancelOutput: Try>,
+    T: TrIntoFutureMayCancel<MayCancelOutput: Try>,
 {
     pub fn new(task: T) -> Self {
         FutureForTaskNeverCancel {
             task_: MaybeUninit::new(task),
-            _use_: PhantomData,
         }
     }
 
@@ -36,9 +33,9 @@ where
     }
 }
 
-impl<'a, T> AsyncFnOnce<()> for FutureForTaskNeverCancel<'a, T>
+impl<T> AsyncFnOnce<()> for FutureForTaskNeverCancel<T>
 where
-    T: TrIntoFutureMayCancel<'a, MayCancelOutput: Try>,
+    T: TrIntoFutureMayCancel<MayCancelOutput: Try>,
 {
     type CallOnceFuture = impl Future<Output = Self::Output>;
     type Output = T::MayCancelOutput;
@@ -51,9 +48,9 @@ where
     }
 }
 
-impl<'a, T> IntoFuture for FutureForTaskNeverCancel<'a, T>
+impl<T> IntoFuture for FutureForTaskNeverCancel<T>
 where
-    T: TrIntoFutureMayCancel<'a, MayCancelOutput: Try>,
+    T: TrIntoFutureMayCancel<MayCancelOutput: Try>,
 {
     type IntoFuture = <Self as AsyncFnOnce<()>>::CallOnceFuture;
     type Output = <Self::IntoFuture as Future>::Output;

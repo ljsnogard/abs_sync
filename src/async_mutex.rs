@@ -27,8 +27,8 @@ where
 
     fn lock_async<'g>(
         self: Pin<&'g mut Self>,
-    ) -> impl TrIntoFutureMayCancel<'g,
-            MayCancelOutput: Try<Output = Self::Guard<'g>>>
+    ) -> impl TrIntoFutureMayCancel<
+        MayCancelOutput: Try<Output = Self::Guard<'g>>>
     where
         'a: 'g;
 }
