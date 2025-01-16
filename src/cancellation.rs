@@ -25,6 +25,12 @@ pub trait TrConfigSignal: IntoFuture<Output = ()> {
     fn pend_on_orphaned(self) -> impl IntoFuture<Output = ()>;
 }
 
+/// An instance of [IntoFuture] for an async task that may or may not be
+/// cancelled by an optional cancellation token.
+///
+/// Note: the lifetime here is required by `rustc` when implementing 
+/// [TrMayCancel] for your type. Along with future release of rustc, the `<'a>`
+/// may be removed.
 pub trait TrMayCancel<'a>
 where
     Self: 'a + Sized + IntoFuture
