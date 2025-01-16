@@ -3,7 +3,7 @@
     pin::Pin,
 };
 
-use crate::cancellation::TrIntoFutureMayCancel;
+use crate::cancellation::TrMayCancel;
 
 /// Reader-Writer lock for asynchronous task pattern.
 pub trait TrAsyncRwLock {
@@ -43,21 +43,21 @@ where
 
     fn read_async<'g>(
         self: Pin<&'g mut Self>,
-    ) -> impl TrIntoFutureMayCancel<
+    ) -> impl TrMayCancel<'g,
         MayCancelOutput: Try<Output = Self::ReaderGuard<'g>>>
     where
         'a: 'g;
 
     fn write_async<'g>(
         self: Pin<&'g mut Self>,
-    ) -> impl TrIntoFutureMayCancel<
+    ) -> impl TrMayCancel<'g,
         MayCancelOutput: Try<Output = Self::WriterGuard<'g>>>
     where
         'a: 'g;
 
     fn upgradable_read_async<'g>(
         self: Pin<&'g mut Self>,
-    ) -> impl TrIntoFutureMayCancel<
+    ) -> impl TrMayCancel<'g,
         MayCancelOutput: Try<Output = Self::UpgradableGuard<'g>>>
     where
         'a: 'g;
@@ -115,7 +115,7 @@ where
 
     fn upgrade_async<'u>(
         self: Pin<&'u mut Self>,
-    ) -> impl TrIntoFutureMayCancel<MayCancelOutput: Try<Output =
+    ) -> impl TrMayCancel<'u, MayCancelOutput: Try<Output =
         <Self::Acquire as TrAcquire<'a, T>>::WriterGuard<'u>>>
     where
         'g: 'u;
@@ -133,7 +133,7 @@ mod demo_ {
     };
     use pin_utils::pin_mut;
 
-    use crate::cancellation::{NonCancellableToken, TrIntoFutureMayCancel};
+    use crate::cancellation::{NonCancellableToken, TrMayCancel};
 
     use super::*;
 

@@ -3,7 +3,7 @@
     pin::Pin,
 };
 
-use crate::cancellation::TrIntoFutureMayCancel;
+use crate::cancellation::TrMayCancel;
 
 /// Mutex for asynchronous task pattern.
 pub trait TrAsyncMutex {
@@ -27,7 +27,7 @@ where
 
     fn lock_async<'g>(
         self: Pin<&'g mut Self>,
-    ) -> impl TrIntoFutureMayCancel<
+    ) -> impl TrMayCancel<'g, 
         MayCancelOutput: Try<Output = Self::Guard<'g>>>
     where
         'a: 'g;

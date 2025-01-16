@@ -24,7 +24,7 @@ pub mod sync_tasks;
 pub mod preludes {
     pub use super::async_lock::TrAsyncRwLock;
     pub use super::async_mutex::TrAsyncMutex;
-    pub use super::cancellation::{TrCancellationToken, TrIntoFutureMayCancel};
+    pub use super::cancellation::{TrCancellationToken, TrMayCancel};
     pub use super::ok_or::XtOkOr;
     pub use super::sync_lock::TrSyncRwLock;
     pub use super::sync_mutex::TrSyncMutex;

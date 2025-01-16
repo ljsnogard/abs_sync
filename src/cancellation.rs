@@ -1,12 +1,12 @@
 ﻿use core::{
     cell::SyncUnsafeCell,
-    future::{self, Future, IntoFuture},
+    future::{self, IntoFuture},
     marker::PhantomPinned,
     pin::Pin,
 };
 
 pub trait TrCancellationToken: Clone {
-    type Cancellation<'a>: 'a + IntoFuture<Output = ()> where Self: 'a;
+    type Cancellation<'a>: 'a + TrConfigSignal where Self: 'a;
 
     fn is_cancelled(&self) -> bool;
 
@@ -15,7 +15,7 @@ pub trait TrCancellationToken: Clone {
     fn cancellation(self: Pin<&mut Self>) -> Self::Cancellation<'_>;
 }
 
-pub trait TrConfigCancelSignal: IntoFuture<Output = ()> {
+pub trait TrConfigSignal: IntoFuture<Output = ()> {
     /// Configure the future of cancellation signal should turn ready when the 
     /// cancellation token is orphaned.
     fn cancel_on_orphaned(self) -> impl IntoFuture<Output = ()>;
@@ -25,16 +25,16 @@ pub trait TrConfigCancelSignal: IntoFuture<Output = ()> {
     fn pend_on_orphaned(self) -> impl IntoFuture<Output = ()>;
 }
 
-pub trait TrIntoFutureMayCancel
+pub trait TrMayCancel<'a>
 where
-    Self: Sized,
+    Self: 'a + Sized + IntoFuture
 {
     type MayCancelOutput;
 
     fn may_cancel_with<'f, C: TrCancellationToken>(
         self,
         cancel: Pin<&'f mut C>,
-    ) -> impl Future<Output = Self::MayCancelOutput>
+    ) -> impl IntoFuture<Output = Self::MayCancelOutput>
     where
         Self: 'f;
 }
@@ -114,5 +114,25 @@ impl TrCancellationToken for NonCancellableToken {
 
     fn cancellation(self: Pin<&mut Self>) -> Self::Cancellation<'_> {
         NonCancellableToken::cancellation(self)
+    }
+}
+
+impl TrConfigSignal for future::Ready<()> {
+    fn cancel_on_orphaned(self) -> impl IntoFuture<Output = ()> {
+        self
+    }
+
+    fn pend_on_orphaned(self) -> impl IntoFuture<Output = ()> {
+        future::pending()
+    }
+}
+
+impl TrConfigSignal for future::Pending<()> {
+    fn cancel_on_orphaned(self) -> impl IntoFuture<Output = ()> {
+        self
+    }
+
+    fn pend_on_orphaned(self) -> impl IntoFuture<Output = ()> {
+        self
     }
 }
