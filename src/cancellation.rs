@@ -6,23 +6,13 @@
 };
 
 pub trait TrCancellationToken: Clone {
-    type Cancellation<'a>: 'a + TrConfigSignal where Self: 'a;
+    type Cancellation<'a>: 'a + IntoFuture<Output = ()> where Self: 'a;
 
     fn is_cancelled(&self) -> bool;
 
     fn can_be_cancelled(&self) -> bool;
 
     fn cancellation(self: Pin<&mut Self>) -> Self::Cancellation<'_>;
-}
-
-pub trait TrConfigSignal: IntoFuture<Output = ()> {
-    /// Configure the future of cancellation signal should turn ready when the 
-    /// cancellation token is orphaned.
-    fn cancel_on_orphaned(self) -> impl IntoFuture<Output = ()>;
-
-    /// Configure the future of cancellation signal should stay pending even 
-    /// though the cancellation token is orphaned.
-    fn pend_on_orphaned(self) -> impl IntoFuture<Output = ()>;
 }
 
 /// An instance of [IntoFuture] for an async task that may or may not be
@@ -120,25 +110,5 @@ impl TrCancellationToken for NonCancellableToken {
 
     fn cancellation(self: Pin<&mut Self>) -> Self::Cancellation<'_> {
         NonCancellableToken::cancellation(self)
-    }
-}
-
-impl TrConfigSignal for future::Ready<()> {
-    fn cancel_on_orphaned(self) -> impl IntoFuture<Output = ()> {
-        self
-    }
-
-    fn pend_on_orphaned(self) -> impl IntoFuture<Output = ()> {
-        future::pending()
-    }
-}
-
-impl TrConfigSignal for future::Pending<()> {
-    fn cancel_on_orphaned(self) -> impl IntoFuture<Output = ()> {
-        self
-    }
-
-    fn pend_on_orphaned(self) -> impl IntoFuture<Output = ()> {
-        self
     }
 }
