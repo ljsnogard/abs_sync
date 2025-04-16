@@ -12,6 +12,8 @@
 #[cfg(test)]
 extern crate std;
 
+pub use gen_mcf_macro;
+
 pub mod async_lock;
 pub mod async_mutex;
 pub mod cancellation;
@@ -22,6 +24,7 @@ pub mod sync_mutex;
 pub mod sync_tasks;
 
 pub mod preludes {
+    pub use gen_mcf_macro::gen_may_cancel_future;
     pub use super::async_lock::TrAsyncRwLock;
     pub use super::async_mutex::TrAsyncMutex;
     pub use super::cancellation::{TrCancellationToken, TrMayCancel};

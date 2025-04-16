@@ -11,6 +11,9 @@ categories = ["no-std"]
 license = "MIT/Apache-2.0"
 readme = "README.md"
 
+[dependencies]
+gen_mcf_macro = { git = "https://github.com/ljsnogard/gen_mcf_macro.rs.git", branch = "main" }
+
 [dev-dependencies]
 futures-lite = { version = "2" }
 pin-utils = { version = "*" }
