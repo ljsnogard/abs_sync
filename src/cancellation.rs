@@ -6,13 +6,11 @@
 };
 
 pub trait TrCancellationToken: Clone {
-    type Cancellation<'a>: 'a + IntoFuture<Output = ()> where Self: 'a;
-
     fn is_cancelled(&self) -> bool;
 
     fn can_be_cancelled(&self) -> bool;
 
-    fn cancellation(self: Pin<&mut Self>) -> Self::Cancellation<'_>;
+    fn cancellation(self: Pin<&mut Self>) -> impl IntoFuture<Output = ()>;
 }
 
 /// An instance of [IntoFuture] for an async task that may or may not be
@@ -58,17 +56,18 @@ impl CancelledToken {
 }
 
 impl TrCancellationToken for CancelledToken {
-    type Cancellation<'a> = future::Ready<()> where Self: 'a;
-
+    #[inline]
     fn is_cancelled(&self) -> bool {
         true
     }
 
+    #[inline]
     fn can_be_cancelled(&self) -> bool {
         false
     }
 
-    fn cancellation(self: Pin<&mut Self>) -> Self::Cancellation<'_> {
+    #[inline]
+    fn cancellation(self: Pin<&mut Self>) -> impl IntoFuture<Output = ()> {
         CancelledToken::cancellation(self)
     }
 }
@@ -98,17 +97,18 @@ impl NonCancellableToken {
 }
 
 impl TrCancellationToken for NonCancellableToken {
-    type Cancellation<'a> = future::Pending<()> where Self: 'a;
-
+    #[inline]
     fn is_cancelled(&self) -> bool {
         false
     }
 
+    #[inline]
     fn can_be_cancelled(&self) -> bool {
         false
     }
 
-    fn cancellation(self: Pin<&mut Self>) -> Self::Cancellation<'_> {
+    #[inline]
+    fn cancellation(self: Pin<&mut Self>) -> impl IntoFuture<Output = ()> {
         NonCancellableToken::cancellation(self)
     }
 }
