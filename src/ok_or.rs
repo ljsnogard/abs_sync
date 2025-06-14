@@ -56,12 +56,12 @@ where
     }
 }
 
-impl<F, E> XtOkOr<E> for F
+impl<F, G> XtOkOr<G> for F
 where
     F: Future,
-    E: Future,
+    G: Future,
 {
-    fn ok_or(self, other: E) -> OkOr<Self, E> {
+    fn ok_or(self, other: G) -> OkOr<Self, G> {
         OkOr::new(self, other)
     }
 }
