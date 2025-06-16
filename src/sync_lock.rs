@@ -41,19 +41,19 @@ where
 
     fn read<'g>(
         self: Pin<&'g mut Self>,
-    ) -> impl TrSyncTask<Output = Self::ReaderGuard<'g>>
+    ) -> impl TrSyncTask<MayCancelOutput = Self::ReaderGuard<'g>>
     where
         'a: 'g;
 
     fn write<'g>(
         self: Pin<&'g mut Self>,
-    ) -> impl TrSyncTask<Output = Self::WriterGuard<'g>>
+    ) -> impl TrSyncTask<MayCancelOutput = Self::WriterGuard<'g>>
     where
         'a: 'g;
 
     fn upgradable_read<'g>(
         self: Pin<&'g mut Self>,
-    ) -> impl TrSyncTask<Output = Self::UpgradableGuard<'g>>
+    ) -> impl TrSyncTask<MayCancelOutput = Self::UpgradableGuard<'g>>
     where
         'a: 'g;
 }
@@ -121,7 +121,7 @@ where
 
     fn upgrade<'u>(
         self: Pin<&'u mut Self>,
-    ) -> impl TrSyncTask<Output =
+    ) -> impl TrSyncTask<MayCancelOutput =
             <Self::Acquire as TrAcquire<'a, T>>::WriterGuard<'u>>
     where
         'g: 'u;

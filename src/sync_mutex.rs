@@ -26,7 +26,7 @@ where
 
     fn lock<'g>(
         self: Pin<&'g mut Self>,
-    ) -> impl TrSyncTask<Output = Self::MutexGuard<'g>>
+    ) -> impl TrSyncTask<MayCancelOutput = Self::MutexGuard<'g>>
     where
         'a: 'g;
 }
