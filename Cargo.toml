@@ -4,7 +4,7 @@ version = "0.2.0"
 edition = "2024"
 
 authors = ["lino <lino_snsalias@outlook.com>"]
-description = "Abstraction of synchronization for rust async/await"
+description = "ABStraction of SYNchronization"
 repository = "https://github.com/ljsnogard/abs_sync"
 keywords = ["async", "traits"]
 categories = ["no-std"]
