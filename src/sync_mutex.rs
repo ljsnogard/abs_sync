@@ -1,39 +1,32 @@
-﻿use core::{
-    ops::{DerefMut, Try},
-    pin::Pin,
-};
+﻿use core::ops::Try;
 
-use crate::sync_tasks::TrSyncTask;
+use crate::{
+    may_break::TrMayBreak,
+    sync_guard::TrAcqMutGuard,
+};
 
 pub trait TrSyncMutex {
     type Target: ?Sized;
 
-    fn acquire(&self) -> impl TrAcquire<'_, Self::Target>;
+    fn acquire(&self) -> impl TrSyncMutexAcquire<'_, Self::Target>;
 }
 
-pub trait TrAcquire<'a, T>
+pub trait TrSyncMutexAcquire<'a, T>
 where
     Self: 'a,
     T: 'a + ?Sized,
 {
-    type MutexGuard<'g>: TrMutexGuard<'a, 'g, T> where 'a: 'g;
+    type Guard<'g>: TrAcqMutGuard<'a, 'g, T> where 'a: 'g;
 
     fn try_lock<'g>(
-        self: Pin<&'g mut Self>,
-    ) -> impl Try<Output = Self::MutexGuard<'g>>
+        &'g mut self,
+    ) -> impl Try<Output = Self::Guard<'g>>
     where
         'a: 'g;
 
     fn lock<'g>(
-        self: Pin<&'g mut Self>,
-    ) -> impl TrSyncTask<MayCancelOutput = Self::MutexGuard<'g>>
+        &'g mut self,
+    ) -> impl TrMayBreak<MayBreakOutput: Try<Output = Self::Guard<'g>>>
     where
         'a: 'g;
 }
-
-pub trait TrMutexGuard<'a, 'g, T>
-where
-    'a: 'g,
-    Self: 'g + DerefMut<Target = T>,
-    T: 'a + ?Sized,
-{}

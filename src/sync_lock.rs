@@ -1,132 +1,129 @@
-﻿use core::{
-    ops::{Deref, DerefMut, Try},
-    pin::Pin,
+﻿use core::ops::Try;
+
+use crate::{
+    may_break::TrMayBreak,
+    sync_guard::{TrAcqMutGuard, TrAcqRefGuard},
 };
-use crate::sync_tasks::TrSyncTask;
 
 pub trait TrSyncRwLock {
     type Target: ?Sized;
 
-    fn acquire(&self) -> impl TrAcquire<'_, Self::Target>;
+    fn acquire(&self) -> impl TrSyncRwLockAcquire<'_, Self::Target>;
 }
 
-pub trait TrAcquire<'a, T>
+pub trait TrSyncRwLockAcquire<'a, T>
 where
     Self: 'a,
     T: 'a + ?Sized,
 {
-    type ReaderGuard<'g>: TrReaderGuard<'a, 'g, T> where 'a: 'g;
+    type ReaderGuard<'g>: TrSyncReaderGuard<'a, 'g, T> where 'a: 'g;
 
-    type WriterGuard<'g>: TrWriterGuard<'a, 'g, T> where 'a: 'g;
+    type WriterGuard<'g>: TrSyncWriterGuard<'a, 'g, T> where 'a: 'g;
 
-    type UpgradableGuard<'g>: TrUpgradableReaderGuard<'a, 'g, T> where 'a: 'g;
+    type UpgradableGuard<'g>: TrSyncUpgradableReaderGuard<'a, 'g, T> where 'a: 'g;
 
     fn try_read<'g>(
-        self: Pin<&'g mut Self>,
+        &'g mut self,
     ) -> impl Try<Output = Self::ReaderGuard<'g>>
     where
         'a: 'g;
 
     fn try_write<'g>(
-        self: Pin<&'g mut Self>,
+        &'g mut self,
     ) -> impl Try<Output = Self::WriterGuard<'g>>
     where
         'a: 'g;
 
     fn try_upgradable_read<'g>(
-        self: Pin<&'g mut Self>,
+        &'g mut self,
     ) -> impl Try<Output = Self::UpgradableGuard<'g>>
     where
         'a: 'g;
 
     fn read<'g>(
-        self: Pin<&'g mut Self>,
-    ) -> impl TrSyncTask<MayCancelOutput = Self::ReaderGuard<'g>>
+        &'g mut self,
+    ) -> impl TrMayBreak<MayBreakOutput: Try<Output = Self::ReaderGuard<'g>>>
     where
         'a: 'g;
 
     fn write<'g>(
-        self: Pin<&'g mut Self>,
-    ) -> impl TrSyncTask<MayCancelOutput = Self::WriterGuard<'g>>
+        &'g mut self,
+    ) -> impl TrMayBreak<MayBreakOutput: Try<Output = Self::WriterGuard<'g>>>
     where
         'a: 'g;
 
     fn upgradable_read<'g>(
-        self: Pin<&'g mut Self>,
-    ) -> impl TrSyncTask<MayCancelOutput = Self::UpgradableGuard<'g>>
+        &'g mut self,
+    ) -> impl TrMayBreak<MayBreakOutput: Try<Output = Self::UpgradableGuard<'g>>>
     where
         'a: 'g;
 }
 
-pub trait TrReaderGuard<'a, 'g, T>
+pub trait TrSyncReaderGuard<'a, 'g, T>
 where
     'a: 'g,
-    Self: 'g + Sized + Deref<Target = T>,
+    Self: 'g + Sized + TrAcqRefGuard<'a, 'g, T>,
     T: 'a + ?Sized,
 {
-    type Acquire: TrAcquire<'a, T>;
-
-    fn as_reader_guard(&self) -> &Self {
-        self
-    }
+    type Acquire: TrSyncRwLockAcquire<'a, T>;
 }
 
-pub trait TrUpgradableReaderGuard<'a, 'g, T>
+pub trait TrSyncUpgradableReaderGuard<'a, 'g, T>
 where
     'a: 'g,
-    Self: 'g + TrReaderGuard<'a, 'g, T>,
+    Self: 'g + TrSyncReaderGuard<'a, 'g, T>,
     T: 'a + ?Sized,
 {
     fn downgrade(
         self,
-    ) -> <Self::Acquire as TrAcquire<'a, T>>::ReaderGuard<'g>;
+    ) -> <Self::Acquire as TrSyncRwLockAcquire<'a, T>>::ReaderGuard<'g>;
 
     fn try_upgrade(
         self,
-    ) -> Result<<Self::Acquire as TrAcquire<'a, T>>::WriterGuard<'g> , Self>;
+    ) -> Result<<Self::Acquire as TrSyncRwLockAcquire<'a, T>>::WriterGuard<'g> , Self>;
 
     fn upgrade(
         self,
-    ) -> impl TrUpgrade<'a, 'g, T, Acquire = Self::Acquire>;
+    ) -> impl TrSyncUpgrade<'a, 'g, T, Acquire = Self::Acquire>;
 }
 
-pub trait TrWriterGuard<'a, 'g, T>
+pub trait TrSyncWriterGuard<'a, 'g, T>
 where
     'a: 'g,
-    Self: 'g + TrReaderGuard<'a, 'g, T> + DerefMut<Target = T>,
+    Self: 'g + TrSyncReaderGuard<'a, 'g, T> + TrAcqMutGuard<'a, 'g, T>,
     T: 'a + ?Sized,
 {
     fn downgrade_to_reader(
         self,
-    ) -> <Self::Acquire as TrAcquire<'a, T>>::ReaderGuard<'g>;
+    ) -> <Self::Acquire as TrSyncRwLockAcquire<'a, T>>::ReaderGuard<'g>;
 
     fn downgrade_to_upgradable(
         self,
-    ) -> <Self::Acquire as TrAcquire<'a, T>>::UpgradableGuard<'g>;
+    ) -> <Self::Acquire as TrSyncRwLockAcquire<'a, T>>::UpgradableGuard<'g>;
 }
 
-pub trait TrUpgrade<'a, 'g, T>
+pub trait TrSyncUpgrade<'a, 'g, T>
 where
     'a: 'g,
     T: 'a + ?Sized,
 {
-    type Acquire: TrAcquire<'a, T>;
+    type Acquire: TrSyncRwLockAcquire<'a, T>;
 
     fn try_upgrade<'u>(
-        self: Pin<&'u mut Self>,
+        &'u mut self,
     ) -> impl Try<Output =
-            <Self::Acquire as TrAcquire<'a, T>>::WriterGuard<'u>>
+            <Self::Acquire as TrSyncRwLockAcquire<'a, T>>::WriterGuard<'u>>
     where
         'g: 'u;
 
     fn upgrade<'u>(
-        self: Pin<&'u mut Self>,
-    ) -> impl TrSyncTask<MayCancelOutput =
-            <Self::Acquire as TrAcquire<'a, T>>::WriterGuard<'u>>
+        &'u mut self,
+    ) -> impl TrMayBreak<MayBreakOutput = impl Try<Output =
+        <Self::Acquire as TrSyncRwLockAcquire<'a, T>>::WriterGuard<'u>>>
     where
         'g: 'u;
 
     fn into_guard(
         self,
-    ) -> <Self::Acquire as TrAcquire<'a, T>>::UpgradableGuard<'g>;
+    ) -> <Self::Acquire as TrSyncRwLockAcquire<'a, T>>::UpgradableGuard<'g>;
 }

@@ -1,41 +1,29 @@
-﻿use core::{
-    ops::{DerefMut, Try},
-    pin::Pin,
-};
+﻿use core::ops::Try;
 
-use crate::cancellation::TrMayCancel;
+use crate::{
+    may_cancel::TrMayCancel,
+    sync_guard::TrAcqMutGuard,
+};
 
 /// Mutex for asynchronous task pattern.
 pub trait TrAsyncMutex {
     type Target: ?Sized;
 
-    fn acquire(&self) -> impl TrAcquire<'_, Self::Target>;
+    fn acquire(&self) -> impl TrAsyncMutexAcquire<'_, Self::Target>;
 }
 
-pub trait TrAcquire<'a, T>
+pub trait TrAsyncMutexAcquire<'a, T>
 where
     Self: 'a,
     T: 'a + ?Sized,
 {
-    type Guard<'g>: TrMutexGuard<'a, 'g, T> where 'a: 'g;
+    type Guard<'g>: TrAcqMutGuard<'a, 'g, T> where 'a: 'g;
 
-    fn try_lock<'g>(
-        self: Pin<&'g mut Self>,
-    ) -> impl Try<Output = Self::Guard<'g>>
+    fn try_lock<'g>(&'g mut self) -> impl Try<Output = Self::Guard<'g>>
     where
         'a: 'g;
 
-    fn lock_async<'g>(
-        self: Pin<&'g mut Self>,
-    ) -> impl TrMayCancel<'g, 
-        MayCancelOutput: Try<Output = Self::Guard<'g>>>
+    fn lock_async<'g>(&'g mut self) -> impl TrMayCancel<'g, MayCancelOutput: Try<Output = Self::Guard<'g>>>
     where
         'a: 'g;
 }
-
-pub trait TrMutexGuard<'a, 'g, T>
-where
-    'a: 'g,
-    Self: 'g + Sized + DerefMut<Target = T>,
-    T: 'a + ?Sized,
-{}

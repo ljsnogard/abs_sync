@@ -1,36 +1,23 @@
 ﻿use core::{
-    cell::SyncUnsafeCell,
     future::{self, IntoFuture},
     marker::PhantomPinned,
-    pin::Pin,
 };
 
-pub trait TrCancellationToken: Clone {
+/// A cancellation token can receive cancellation signal.
+pub trait TrCancellationToken {
+    /// Test whether this token has received cancellation signal or not.
     fn is_cancelled(&self) -> bool;
 
+    /// Test whether this token will receive cancellation signal or not.
     fn can_be_cancelled(&self) -> bool;
 
-    fn cancellation(self: Pin<&mut Self>) -> impl IntoFuture<Output = ()>;
-}
+    /// Create a new token that will receive cancellation signal when this
+    /// token receives the signal.
+    fn child_token(&self) -> impl TrCancellationToken;
 
-/// An instance of [IntoFuture] for an async task that may or may not be
-/// cancelled by an optional cancellation token.
-///
-/// Note: the lifetime here is required by `rustc` when implementing 
-/// [TrMayCancel] for your type. Along with future release of rustc, the `<'a>`
-/// may be removed.
-pub trait TrMayCancel<'a>
-where
-    Self: 'a + Sized + IntoFuture
-{
-    type MayCancelOutput;
-
-    fn may_cancel_with<'f, C: TrCancellationToken>(
-        self,
-        cancel: Pin<&'f mut C>,
-    ) -> impl IntoFuture<Output = Self::MayCancelOutput>
-    where
-        Self: 'f;
+    /// Create a future that will become ready when the cancellation signal is
+    /// received by this token.
+    fn cancellation(&mut self) -> impl IntoFuture;
 }
 
 /// A token that is already cancelled and will no never reset.
@@ -43,29 +30,6 @@ impl CancelledToken {
         CancelledToken(PhantomPinned)
     }
 
-    /// Get a pin pointer to the global shared instance of `CancelledToken`.
-    /// 
-    /// ## Example
-    /// ```
-    /// # futures_lite::future::block_on(async {
-    /// use abs_sync::cancellation::CancelledToken;
-    /// 
-    /// let mut token = CancelledToken::pinned();
-    /// assert!(token.is_cancelled());
-    /// assert!(!token.can_be_cancelled());
-    /// 
-    /// token.as_mut().cancellation().await;
-    /// # })
-    /// ```
-    pub fn pinned() -> Pin<&'static mut Self> {
-        static mut SHARED: SyncUnsafeCell<CancelledToken> =
-            SyncUnsafeCell::new(CancelledToken::new());
-        unsafe {
-            #[allow(static_mut_refs)]
-            Pin::new_unchecked(SHARED.get_mut())
-        }
-    }
-
     /// Always true
     pub const fn is_cancelled(&self) -> bool {
         true
@@ -75,8 +39,12 @@ impl CancelledToken {
         false
     }
 
+    pub const fn child_token(&self) -> CancelledToken {
+        CancelledToken::new()
+    }
+
     /// Always return a ready future.
-    pub fn cancellation(self: Pin<&mut Self>) -> future::Ready<()> {
+    pub fn cancellation(&mut self) -> future::Ready<()> {
         future::ready(())
     }
 }
@@ -93,7 +61,12 @@ impl TrCancellationToken for CancelledToken {
     }
 
     #[inline]
-    fn cancellation(self: Pin<&mut Self>) -> impl IntoFuture<Output = ()> {
+    fn child_token(&self) -> impl TrCancellationToken {
+        CancelledToken::child_token(self)
+    }
+
+    #[inline]
+    fn cancellation(&mut self) -> impl IntoFuture {
         CancelledToken::cancellation(self)
     }
 }
@@ -108,34 +81,6 @@ impl NonCancellableToken {
         NonCancellableToken(PhantomPinned)
     }
 
-    /// Get a pin pointer to the global shared instance of `NonCancelledToken`.
-    /// 
-    /// ## Example
-    /// ```
-    /// # futures_lite::future::block_on(async {
-    /// use abs_sync::{
-    ///     cancellation::NonCancellableToken,
-    ///     ok_or::XtOkOr,
-    /// };
-    /// 
-    /// let mut token = NonCancellableToken::pinned();
-    /// assert!(!token.is_cancelled());
-    /// assert!(!token.can_be_cancelled());
-    /// 
-    /// let signal = token.as_mut().cancellation();
-    /// let answer = async { 42 };
-    /// assert!(signal.ok_or(answer).await.is_err());
-    /// # })
-    /// ```
-    pub fn pinned() -> Pin<&'static mut Self> {
-        static mut SHARED: SyncUnsafeCell<NonCancellableToken> =
-            SyncUnsafeCell::new(NonCancellableToken::new());
-        unsafe {
-            #[allow(static_mut_refs)]
-            Pin::new_unchecked(SHARED.get_mut())
-        }
-    }
-
     /// Always false
     pub const fn is_cancelled(&self) -> bool {
         false
@@ -146,8 +91,12 @@ impl NonCancellableToken {
         false
     }
 
+    pub const fn child_token(&self) -> NonCancellableToken {
+        NonCancellableToken::new()
+    }
+
     /// Always returns a pending future.
-    pub fn cancellation(self: Pin<&mut Self>) -> future::Pending<()> {
+    pub fn cancellation(&mut self) -> future::Pending<()> {
         future::pending()
     }
 }
@@ -164,7 +113,12 @@ impl TrCancellationToken for NonCancellableToken {
     }
 
     #[inline]
-    fn cancellation(self: Pin<&mut Self>) -> impl IntoFuture<Output = ()> {
+    fn child_token(&self) -> impl TrCancellationToken {
+        NonCancellableToken::child_token(self)
+    }
+
+    #[inline]
+    fn cancellation(&mut self) -> impl IntoFuture {
         NonCancellableToken::cancellation(self)
     }
 }

@@ -1,6 +1,6 @@
 ﻿[package]
 name = "abs_sync"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 
 authors = ["lino <lino_snsalias@outlook.com>"]
