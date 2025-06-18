@@ -1,7 +1,4 @@
-﻿use core::{
-    future::{self, IntoFuture},
-    marker::PhantomPinned,
-};
+﻿use core::future::{self, IntoFuture};
 
 /// A cancellation token can receive cancellation signal.
 pub trait TrCancellationToken {
@@ -22,12 +19,38 @@ pub trait TrCancellationToken {
 
 /// A token that is already cancelled and will no never reset.
 #[derive(Debug, Default, Clone, Copy)]
-pub struct CancelledToken(PhantomPinned);
+pub struct CancelledToken;
 
 impl CancelledToken {
+    /// Get a mut reference to the global static instance of `CancelledToken`.
+    /// 
+    /// ## Example
+    /// ```
+    /// # futures_lite::future::block_on(async {
+    /// use abs_sync::{
+    ///     cancellation::CancelledToken,
+    ///     ok_or::XtOkOr,
+    /// };
+    /// 
+    /// let token = CancelledToken::shared_mut();
+    /// assert!(token.is_cancelled());
+    /// assert!(!token.can_be_cancelled());
+    /// 
+    /// let r = token.cancellation().ok_or(async {42}).await;
+    /// assert!(r.is_ok());
+    /// # })
+    /// ```
+    pub fn shared_mut() -> &'static mut Self {
+        static mut SHARED: CancelledToken = CancelledToken::new();
+        unsafe {
+            #[allow(static_mut_refs)]
+            &mut SHARED
+        }
+    }
+
     /// Create an instance of `CancelledToken`
     pub const fn new() -> Self {
-        CancelledToken(PhantomPinned)
+        CancelledToken
     }
 
     /// Always true
@@ -74,11 +97,37 @@ impl TrCancellationToken for CancelledToken {
 /// A cancellation token that will never be cancelled, usually used
 /// as a dummy for `TrCancellationToken`.
 #[derive(Debug, Default, Clone, Copy)]
-pub struct NonCancellableToken(PhantomPinned);
+pub struct NonCancellableToken;
 
 impl NonCancellableToken {
+    /// Get a mut reference to the global static instance of `NonCancellableToken`.
+    /// 
+    /// ## Example
+    /// ```
+    /// # futures_lite::future::block_on(async {
+    /// use abs_sync::{
+    ///     cancellation::NonCancellableToken,
+    ///     ok_or::XtOkOr,
+    /// };
+    /// 
+    /// let token = NonCancellableToken::shared_mut();
+    /// assert!(!token.is_cancelled());
+    /// assert!(!token.can_be_cancelled());
+    /// 
+    /// let r = token.cancellation().ok_or(async {42}).await;
+    /// assert!(r.is_err());
+    /// # })
+    /// ```
+    pub fn shared_mut() -> &'static mut Self {
+        static mut SHARED: NonCancellableToken = NonCancellableToken::new();
+        unsafe {
+            #[allow(static_mut_refs)]
+            &mut SHARED
+        }
+    }
+
     pub const fn new() -> Self {
-        NonCancellableToken(PhantomPinned)
+        NonCancellableToken
     }
 
     /// Always false
@@ -120,5 +169,28 @@ impl TrCancellationToken for NonCancellableToken {
     #[inline]
     fn cancellation(&mut self) -> impl IntoFuture {
         NonCancellableToken::cancellation(self)
+    }
+}
+
+#[cfg(test)]
+mod tests_ {
+    use crate::cancellation::{CancelledToken, NonCancellableToken};
+
+    fn assure_send<T: Send>(t: T) -> T { t }
+
+    fn assure_sync<T: Sync>(t: T) -> T { t }
+
+    #[test]
+    fn non_cancellable_token_shared_mut_should_be_send_and_sync() {
+        let tok = NonCancellableToken::shared_mut();
+        let tok = assure_send(tok);
+        let _ = assure_sync(tok);
+    }
+
+    #[test]
+    fn cancelled_token_shared_mut_should_be_send_and_sync() {
+        let tok = CancelledToken::shared_mut();
+        let tok = assure_send(tok);
+        let _ = assure_sync(tok);
     }
 }

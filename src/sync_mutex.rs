@@ -1,9 +1,7 @@
 ﻿use core::ops::Try;
 
-use crate::{
-    may_break::TrMayBreak,
-    sync_guard::TrAcqMutGuard,
-};
+use crate::may_break::TrMayBreak;
+pub use crate::sync_guard::{TrAcqMutGuard, TrAcqRefGuard};
 
 pub trait TrSyncMutex {
     type Target: ?Sized;

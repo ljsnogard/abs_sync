@@ -1,9 +1,7 @@
 ﻿use core::ops::Try;
 
-use crate::{
-    may_break::TrMayBreak,
-    sync_guard::{TrAcqMutGuard, TrAcqRefGuard},
-};
+use crate::may_break::TrMayBreak;
+pub use crate::sync_guard::{TrAcqMutGuard, TrAcqRefGuard};
 
 pub trait TrSyncRwLock {
     type Target: ?Sized;
@@ -118,7 +116,7 @@ where
 
     fn upgrade<'u>(
         &'u mut self,
-    ) -> impl TrMayBreak<MayBreakOutput = impl Try<Output =
+    ) -> impl TrMayBreak<MayBreakOutput: Try<Output =
         <Self::Acquire as TrSyncRwLockAcquire<'a, T>>::WriterGuard<'u>>>
     where
         'g: 'u;
