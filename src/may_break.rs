@@ -22,14 +22,15 @@ pub trait TrMayBreak: Sized {
         self.may_break_with(NonCancellableToken::shared_mut())
     }
 
-    fn wait_and_unwrap(self) -> <Self::MayBreakOutput as Try>::Output
+    fn wait_or<F>(self, f: F) -> <Self::MayBreakOutput as Try>::Output
     where
         Self::MayBreakOutput: Try,
+        F: FnOnce() -> <Self::MayBreakOutput as Try>::Output,
     {
-        let ControlFlow::Continue(x) = self.wait().branch() else {
-            panic!()
-        };
-        x
+        match self.wait().branch() {
+            ControlFlow::Continue(x) => x,
+            _ => f(),
+        }
     }
 }
 
