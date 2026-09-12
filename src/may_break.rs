@@ -1,12 +1,12 @@
 ﻿use core::ops::{ControlFlow, Try};
 
-use crate::cancellation::{NonCancellableToken, TrCancellationToken};
+use abs_cancel::{NonCancellableToken, TrCancellationToken};
 
 /// Describes a coroutine, a loop, or a job to run on other thread, that can be
 /// discontinued with an external cancellation token.
-/// 
+///
 /// ## Usage Note
-/// 
+///
 /// * This is different from `TrMayCancel` in that it does not work with
 ///   async/await. No asynchronous runtime is involved, nor futures;
 /// * This is assumed to work only that, the coroutine, or loop, or the job,
@@ -19,7 +19,7 @@ pub trait TrMayBreak: Sized {
         C: TrCancellationToken;
 
     fn wait(self) -> Self::MayBreakOutput {
-        self.may_break_with(NonCancellableToken::shared_mut())
+        self.may_break_with(&mut NonCancellableToken::new())
     }
 
     fn wait_or<F>(self, f: F) -> <Self::MayBreakOutput as Try>::Output

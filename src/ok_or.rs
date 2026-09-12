@@ -3,6 +3,7 @@
     pin::Pin,
     task::{Context, Poll},
 };
+use pin_project::pin_project;
 
 pub trait XtOkOr<E>
 where
@@ -13,13 +14,15 @@ where
 }
 
 #[derive(Debug)]
+#[pin_project]
 pub struct OkOr<F, G>
 where
     F: Future,
     G: Future,
 {
-    ok_: F,
-    or_: G,
+    #[pin]succ_: F,
+    #[pin]fail_: G,
+    done_: bool,
 }
 
 impl<F, G> OkOr<F, G>
@@ -27,10 +30,11 @@ where
     F: Future,
     G: Future,
 {
-    const fn new(succeed: F, otherwise: G) -> Self {
+    pub const fn new(succeed: F, otherwise: G) -> Self {
         OkOr {
-            ok_: succeed,
-            or_: otherwise,
+            succ_: succeed,
+            fail_: otherwise,
+            done_: false,
         }
     }
 }
@@ -42,14 +46,17 @@ where
 {
     type Output = Result<F::Output, G::Output>;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this_mut = unsafe { self.as_mut().get_unchecked_mut() };
-        let ok = unsafe { Pin::new_unchecked(&mut this_mut.ok_) };
-        let err = unsafe { Pin::new_unchecked(&mut this_mut.or_) };
-        if let Poll::Ready(x) = ok.poll(cx) {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let mut this = self.project();
+        if *this.done_ {
+            panic!("polled after completion");
+        };
+        if let Poll::Ready(x) = this.succ_.as_mut().poll(cx) {
+            *this.done_ = true;
             return Poll::Ready(Result::Ok(x));
         }
-        if let Poll::Ready(e) = err.poll(cx) {
+        if let Poll::Ready(e) = this.fail_.as_mut().poll(cx) {
+            *this.done_ = true;
             return Poll::Ready(Result::Err(e));
         }
         Poll::Pending
@@ -72,16 +79,16 @@ mod tests_ {
 
     use super::XtOkOr;
 
-    #[tokio::test]
+    #[compio::test]
     async fn or_else_should_poll_both_future() {
         let a1 = AtomicUsize::new(1);
         let a2 = AtomicUsize::new(2);
 
         async fn fetch_add_async(a: &AtomicUsize) -> usize {
             let u = a.fetch_add(1, Ordering::Relaxed);
-            tokio::time::sleep(Duration::from_micros(100)).await;
-            if u % 2 == 0 {
-                tokio::time::sleep(Duration::from_micros(100)).await;
+            compio::time::sleep(Duration::from_micros(100)).await;
+            if u.is_multiple_of(2) {
+                compio::time::sleep(Duration::from_micros(100)).await;
             }
             u
         }
