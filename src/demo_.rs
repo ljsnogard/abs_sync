@@ -1,63 +1,53 @@
 use std::{
     borrow::BorrowMut,
-    io::Result,
-    ops::{ControlFlow, Deref, DerefMut, Try},
+    ops::{Deref, DerefMut},
 };
 
-use abs_cancel::{NonCancellableToken, TrMayCancel};
+use abs_cancel::{TrCancellationToken, TrMayCancel};
 
-use crate::async_lock::*;
+use crate::async_rwlock::*;
 
 #[allow(dead_code)]
-async fn generic_rwlock_smoke_<B, L, T>(rwlock: B) -> Result<()>
+async fn generic_rwlock_smoke_<B, L, T, K>(
+    rwlock: B,
+    cancel: K,
+)
 where
     B: BorrowMut<L>,
     L: TrAsyncRwLock<Target = T>,
+    K: TrCancellationToken,
 {
-    let mut acq = rwlock.borrow().acquire();
-    let read_async = acq.read_async();
-    // let write_async = acq.write_async(); // illegal
-
-    // `TrMayCancel::may_cancel_with` stores the cancel-token borrow for the
-    // whole operation (its future keeps `&'a mut C`), so each operation needs
-    // its own named token that outlives the guard it feeds, not a temporary.
-    let mut token = NonCancellableToken::new();
+    let mut acq_sess = rwlock.borrow().acq_session();
 
     // let read_guard = read_async
     //     .may_cancel_with(&mut NonCancellableToken::new())
     //     .await?;
-    let ControlFlow::Continue(read_guard) = read_async
-        .may_cancel_with(&mut token)
+    let read_guard = acq_sess
+        .read_async()
+        .may_cancel_with(cancel.child_token())
         .await
-        .branch()
-    else {
-        panic!()
-    };
+        .expect("");
+    // the following line will be illegal, which
+    // let write_async = rwlock.borrow().session().write_async();
+
     let _ = read_guard.deref();
-    // let write_async = acq.write_async(); // illegal
     drop(read_guard);
-    let mut token = NonCancellableToken::new();
-    let ControlFlow::Continue(upgradable) = acq
+
+    let upgradable = acq_sess
         .upgradable_read_async()
-        .may_cancel_with(&mut token)
+        .may_cancel_with(cancel.child_token())
         .await
-        .branch()
-    else {
-        panic!()
-    };
+        .unwrap();
     let _ = upgradable.deref();
-    let mut upgrade = upgradable.upgrade();
-    let mut token = NonCancellableToken::new();
-    let ControlFlow::Continue(mut write_guard) = upgrade
+
+    let mut upg_sess = upgradable.upgrade_session();
+    let mut write_guard = upg_sess
         .upgrade_async()
-        .may_cancel_with(&mut token)
+        .may_cancel_with(cancel.child_token())
         .await
-        .branch()
-    else {
-        panic!()
-    };
+        .unwrap();
     let _ = write_guard.deref_mut();
+
     let upgradable = write_guard.downgrade_to_upgradable();
     drop(upgradable);
-    Ok(())
 }

@@ -9,10 +9,9 @@ repository = "https://github.com/ljsnogard/abs_sync"
 keywords = ["async", "traits"]
 categories = ["no-std"]
 license = "MIT/Apache-2.0"
-readme = "README.md"
 
 [dependencies]
-abs_cancel = { git = "https://gitee.com/lino_snsalias/abs_cancel-rs.git" }
+abs_cancel = { git = "https://gitee.com/lino_snsalias/abs_cancel-rs.git", branch = "dev/0.2.0" }
 pin-project = "1"
 
 [dev-dependencies]

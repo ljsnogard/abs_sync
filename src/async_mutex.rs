@@ -1,6 +1,4 @@
-﻿use core::ops::Try;
-
-use abs_cancel::TrMayCancel;
+﻿use abs_cancel::TrMayCancel;
 
 use crate::sync_guard::TrAcqMutGuard;
 
@@ -8,21 +6,41 @@ use crate::sync_guard::TrAcqMutGuard;
 pub trait TrAsyncMutex {
     type Target: ?Sized;
 
-    fn acquire(&self) -> impl TrAsyncMutexAcquire<'_, Self::Target>;
+    type LockSess<'f>: TrAsyncMutexLockSess<'f, Self::Target, Err = Self::Err>
+    where
+        Self: 'f;
+
+    type Err: core::error::Error;
+
+    /// Get a session that can lock the mutex.
+    fn lock_session(&self) -> Self::LockSess<'_>;
 }
 
-pub trait TrAsyncMutexAcquire<'a, T>
+pub trait TrAsyncMutexLockSess<'a, T>
 where
     Self: 'a,
     T: 'a + ?Sized,
 {
     type Guard<'g>: TrAcqMutGuard<'a, 'g, T> where 'a: 'g;
 
-    fn try_lock<'g>(&'g mut self) -> impl Try<Output = Self::Guard<'g>>
+    type Err: core::error::Error;
+
+    // -- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+    // -- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+
+    fn try_lock<'g>(&'g mut self) -> Result<Self::Guard<'g>, Self::Err>
     where
         'a: 'g;
 
-    fn lock_async<'g>(&'g mut self) -> impl TrMayCancel<'g, MayCancelOutput: Try<Output = Self::Guard<'g>>>
+    // -- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+    // -- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+
+    type LockAsync<'f>: TrMayCancel<'f, MayCancelOutput =
+        Result<Self::Guard<'f>, Self::Err>>
+    where
+        'a: 'f;
+
+    fn lock_async<'g>(&'g mut self) -> Self::LockAsync<'g>
     where
         'a: 'g;
 }

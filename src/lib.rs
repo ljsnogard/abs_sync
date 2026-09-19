@@ -14,20 +14,20 @@ extern crate std;
 #[cfg(test)]
 mod demo_;
 
-pub mod async_lock;
+pub mod async_rwlock;
 pub mod async_mutex;
 pub mod sync_guard;
 pub mod may_break;
 pub mod ok_or;
-pub mod sync_lock;
+pub mod sync_rwlock;
 pub mod sync_mutex;
 
 pub mod preludes {
-    pub use super::async_lock::TrAsyncRwLock;
+    pub use super::async_rwlock::TrAsyncRwLock;
     pub use super::async_mutex::TrAsyncMutex;
     pub use super::may_break::TrMayBreak;
     pub use super::ok_or::{OkOr, XtOkOr};
-    pub use super::sync_lock::TrSyncRwLock;
+    pub use super::sync_rwlock::TrSyncRwLock;
     pub use super::sync_mutex::TrSyncMutex;
 }
 

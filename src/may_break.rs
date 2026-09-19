@@ -14,12 +14,12 @@ use abs_cancel::{NonCancellableToken, TrCancellationToken};
 pub trait TrMayBreak: Sized {
     type MayBreakOutput: Sized;
 
-    fn may_break_with<C>(self, cancel: &mut C) -> Self::MayBreakOutput
+    fn may_break_with<C>(self, cancel: C) -> Self::MayBreakOutput
     where
         C: TrCancellationToken;
 
     fn wait(self) -> Self::MayBreakOutput {
-        self.may_break_with(&mut NonCancellableToken::new())
+        self.may_break_with(NonCancellableToken::new())
     }
 
     fn wait_or<F>(self, f: F) -> <Self::MayBreakOutput as Try>::Output
@@ -41,7 +41,7 @@ impl<T> Completed<T> {
         Self(value)
     }
 
-    pub fn may_break_with<C>(self, _: &mut C) -> T
+    pub fn may_break_with<C>(self, _: C) -> T
     where
         C: TrCancellationToken,
     {
@@ -59,7 +59,7 @@ impl<T> TrMayBreak for Completed<T> {
     type MayBreakOutput = T;
 
     #[inline]
-    fn may_break_with<C>(self, cancel: &mut C) -> Self::MayBreakOutput
+    fn may_break_with<C>(self, cancel: C) -> Self::MayBreakOutput
     where
         C: TrCancellationToken,
     {
